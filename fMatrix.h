@@ -19,6 +19,7 @@
 #define __MATRIX_INCLUDED__
 
 #include "fVector.h"
+#include "math.h"
 
 class fMatrix {
     friend class fVector;
@@ -96,6 +97,8 @@ class fMatrix {
                                           // vector, using outer product.
     friend void SVDcmp(fMatrix &AU, fVector &W,
                        fMatrix &V);  // Computes SVD decomposition of a matrix.
+    friend void SVD(fMatrix &AU, fVector &W,
+                    fMatrix &V);  // Computes SVD decomposition of a matrix.
 
     // friend void ShowMatrix(const fMatrix &); // Print a matrix on screen.
 
@@ -135,8 +138,8 @@ class fMatrix {
     fMatrix &SwapCols(int j1, int j2);
     // 8. Inverse
     fMatrix &Inv(void);
-    // void SetCol(int col, const fVector &);
-    // void SetRow(int row, const fVector &);
+    void SetCol(int col, fVector &vec);
+    void SetRow(int row, fVector &vec);
     // void SetBlock(int imin, int imax, int jmin, int jmax, const fMatrix &);
     // void SetBlock(int imin, int imax, int jmin, int jmax, const fVector &);
     void SetSize(int rows, int cols = 0);
@@ -149,11 +152,19 @@ class fMatrix {
     inline void Setelem(int col, int row, Float value) const {
         elem[col * rows + row] = value;
     }
+    inline Float MaxAbsElem() const {
+        Float max = 0;
+        for (int i = 0; i < rows * cols; i++) {
+            if (fabs(elem[i]) > max) max = fabs(elem[i]);
+        }
+        return max;
+    }
 
     void SetIdentity(void);
 
     fMatrix Diag(const fVector &);
     void SVDcmp(fMatrix &AU, fVector &W, fMatrix &V);
+    void SVD(fMatrix &AU, fVector &W, fMatrix &V);
 
     void Show() const;
 

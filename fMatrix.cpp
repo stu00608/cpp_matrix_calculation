@@ -3,9 +3,11 @@
 #include <math.h>
 #include <stdlib.h>
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <limits>
+#include <vector>
 
 #include "fVector.h"
 
@@ -193,7 +195,7 @@ Float fMatrix::Getelem(int col, int row) const {
 void fMatrix::Show() const {
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-            std::cout << elem[i * cols + j] << " ";
+            std::cout << elem[i * rows + j] << " ";
         }
         std::cout << std::endl;
     }
@@ -612,6 +614,17 @@ void fMatrix::SetSize(int rows, int cols) {
     this->cols = cols;
 }
 
+void fMatrix::SetCol(int col, fVector &vec) {
+    for (int i = 0; i < Rows(); ++i) {
+        Setelem(i, col, vec(i));
+    }
+}
+void fMatrix::SetRow(int row, fVector &vec) {
+    for (int j = 0; j < Cols(); ++j) {
+        Setelem(row, j, vec(j));
+    }
+}
+
 void fMatrix::SetIdentity() {
     for (int i = 0; i < Rows(); ++i) {
         for (int j = 0; j < Cols(); ++j) {
@@ -624,8 +637,8 @@ void fMatrix::SetIdentity() {
     }
 }
 
-fMatrix GivensRotation(int i, int j, Float theta, int n) {
-    fMatrix G(n, n);
+fMatrix GivensRotation(int i, int j, Float theta, int m, int n) {
+    fMatrix G(m, n);
     G.SetIdentity();
     G.Setelem(i, i, cos(theta));
     G.Setelem(j, j, cos(theta));
@@ -640,56 +653,6 @@ Float TwoNorm(const fVector &v) {
         norm += v(i) * v(i);
     }
     return sqrt(norm);
-}
-
-void SVDcmp(fMatrix &AU, fVector &W, fMatrix &V) {
-    int m = AU.Rows();
-    int n = AU.Cols();
-    fMatrix U(m, m), V_temp(n, n);
-    U.SetIdentity();
-    V_temp.SetIdentity();
-
-    Float tol = 1e-10;
-    bool converged = false;
-
-    int max_iterations = 100;  // Set a maximum number of iterations
-    int iteration = 0;         // Initialize the iteration counter
-
-    while (!converged && iteration < max_iterations) {
-        converged = true;
-        for (int i = 0; i < n - 1; i++) {
-            for (int j = i + 1; j < n; j++) {
-                Float a = 0, b = 0, c = 0;
-                for (int k = 0; k < m; k++) {
-                    a += AU.Getelem(k, i) * AU.Getelem(k, i);
-                    b += AU.Getelem(k, j) * AU.Getelem(k, j);
-                    c += AU.Getelem(k, i) * AU.Getelem(k, j);
-                }
-                if (fabs(c) > tol * sqrt(a * b)) {
-                    converged = false;
-                    Float theta = 0.5 * atan2(2 * c, a - b);
-                    fMatrix G = GivensRotation(
-                        i, j, theta, m);  // Change the size of the Givens
-                                          // rotation matrix to 'm'
-                    AU = AU * G;
-                    U = U * G;
-                    V_temp = V_temp * Transp(G);
-                }
-            }
-        }
-        iteration++;
-    }
-
-    for (int i = 0; i < n; i++) {
-        W(i) = TwoNorm(AU.GetCol(i));
-    }
-
-    // Copy the results to the input matrices
-    AU = U;
-    V = V_temp;
-
-    // Print the resulting matrix
-    // AU.Show();
 }
 
 fMatrix Cholesky(const fMatrix &A) {
@@ -719,4 +682,75 @@ fMatrix Cholesky(const fMatrix &A) {
     }
 
     return L;
+}
+
+void SVD(fMatrix &AU, fVector &W, fMatrix &V) {
+    int m = AU.Rows();
+    int n = AU.Cols();
+    fMatrix B = AU;
+
+    // Initialize W and V
+    V.SetIdentity();
+
+    const double eps = 1e-15;
+    const int max_iter = 100;
+
+    for (int iter = 0; iter < max_iter; ++iter) {
+        std::cout << ".";
+        double max_val = 0.0;
+        int p = 0, q = 0;
+
+        // Find the largest off-diagonal element in B
+        for (int i = 0; i < n - 1; ++i) {
+            for (int j = i + 1; j < m; ++j) {
+                double val = std::abs(B.Getelem(i, j));
+                if (val > max_val) {
+                    max_val = val;
+                    p = i;
+                    q = j;
+                }
+            }
+        }
+
+        // Check for convergence
+        if (max_val < eps * B.MaxAbsElem()) {
+            break;
+        }
+
+        // Perform Jacobi rotation
+        double theta = 0.5 * std::atan2(2.0 * B.Getelem(p, q),
+                                        B.Getelem(q, q) - B.Getelem(p, p));
+        double c = std::cos(theta);
+        double s = std::sin(theta);
+
+        fMatrix J(n, n);
+        J.SetIdentity();
+        J.Setelem(p, p, c);
+        J.Setelem(p, q, s);
+        J.Setelem(q, p, -s);
+        J.Setelem(q, q, c);
+
+        B = B * J;
+        V = V * J;
+    }
+    std::cout << std::endl;
+
+    // Extract singular values from B
+    for (int i = 0; i < m && i < n; ++i) {
+        W(i) = B.Getelem(i, i);
+    }
+
+    // Calculate U
+    fMatrix U = AU * V;
+    for (int i = 0; i < m; ++i) {
+        for (int j = 0; j < n; ++j) {
+            if (std::abs(W(j)) > eps) {
+                U.Setelem(j, i, U.Getelem(j, i) / W(j));
+            } else {
+                U.Setelem(j, i, 0.0);
+            }
+        }
+    }
+
+    AU = U;
 }

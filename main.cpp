@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include "MatchingPoints.h"
 #include "fMatrix.h"
 #include "fVector.h"
 
@@ -21,7 +22,7 @@ void testMatrixFuns(void) {
     fMatrix MatA(C, 3, 3);
     fMatrix MatB(D, 3, 3);
     fMatrix MatC(MatA);
-    fMatrix MatX(X, 3, 3);
+    fMatrix MatX(X, 5, 3);
     fMatrix MatXt = Transp(MatX);
 
     // Declare and initialize the necessary variables and objects
@@ -115,10 +116,10 @@ void testMatrixFuns(void) {
     (MatA * Inverse(MatA)).Show();
 
     cout << "SVD decomposition functionality test." << endl;
-    fMatrix MatU(MatX);
-    fVector VecD(MatX.Cols());
-    fMatrix MatV(MatX.Cols(), MatX.Cols());
-    SVDcmp(MatU, VecD, MatV);
+    fMatrix MatU(MatXt);
+    fVector VecD(MatXt.Cols());
+    fMatrix MatV(MatXt.Cols(), MatXt.Cols());
+    SVD(MatU, VecD, MatV);
 
     cout << "\nMatU" << endl;
     MatU.Show();
@@ -130,9 +131,26 @@ void testMatrixFuns(void) {
     cout << endl << endl;
 
     cout << "Cholesky decomposition functionality test." << endl;
-    fMatrix MatL = Cholesky(MatX);
+    fMatrix MatL = Cholesky(MatA);
     cout << "\nMatL" << endl;
     MatL.Show();
+
+    cout << "\n\nfindHomography functionality test." << endl;
+
+    int slice_g_nNumPoints = 10;
+    Float slice_g_x1[slice_g_nNumPoints];
+    for (int i = 0; i < slice_g_nNumPoints; i++) {
+        slice_g_x1[i] = g_Ref_X[i];
+    }
+    Float slice_g_x2[slice_g_nNumPoints];
+    for (int i = 0; i < slice_g_nNumPoints; i++) {
+        slice_g_x2[i] = g_x2[i];
+    }
+
+    fMatrix MatH =
+        findHomography(slice_g_x1, slice_g_x2, slice_g_nNumPoints / 2);
+    // fMatrix MatH = findHomography(g_Ref_X, g_x1, g_nNumPoints / 2);
+    MatH.Show();
 
     return;
 }

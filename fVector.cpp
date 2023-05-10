@@ -91,3 +91,19 @@ void fVector::Show(VecType Type) const {
         }
     }
 }
+
+void fVector::SetSize(int n) {
+    if (size != n) {
+        if (elem != nullptr) {
+            delete[] elem;
+            elem = nullptr;
+        }
+        size = n;
+        if (size > 0) {
+            elem = new Float[size];
+            for (int i = 0; i < size; i++) {
+                elem[i] = 0;
+            }
+        }
+    }
+}
