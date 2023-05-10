@@ -3,7 +3,11 @@
 #include <math.h>
 #include <stdlib.h>
 
+#include <cmath>
 #include <iostream>
+#include <limits>
+
+#include "fVector.h"
 
 using namespace std;
 
@@ -147,40 +151,43 @@ fMatrix &fMatrix::Inv(void) {
     return *this;
 }
 // Get col vector
-fMatrix fMatrix::GetCol(int col) const {
+fVector fMatrix::GetCol(int col) const {
     if (col >= 0 && col < cols) {
-        fMatrix colVec(rows, 1);
+        fVector colVec(rows);
         for (int i = 0; i < rows; ++i) {
-            colVec.elem[i] = elem[i * cols + col];
+            colVec(i) = elem[i * cols + col];
         }
         return colVec;
     } else {
         // Return an empty matrix if the column index is out of range
-        return fMatrix();
+        return fVector();
     }
 }
 // Get row vector
-fMatrix fMatrix::GetRow(int row) const {
+fVector fMatrix::GetRow(int row) const {
     if (row >= 0 && row < rows) {
-        fMatrix rowVec(1, cols);
+        fVector rowVec(cols);
         for (int j = 0; j < cols; ++j) {
-            rowVec.elem[j] = elem[row * cols + j];
+            rowVec(j) = elem[row * cols + j];
         }
         return rowVec;
     } else {
         // Return an empty matrix if the row index is out of range
-        return fMatrix();
+        return fVector();
     }
 }
 // Get elem
-fMatrix fMatrix::Getelem(int col, int row) const {
+Float fMatrix::Getelem(int col, int row) const {
     if (col < 0 || col >= cols || row < 0 || row >= rows) {
-        std::cerr << "Index out of range" << std::endl;
+        // Print a error message and show the expected col, row and the actual
+        // col, row
+        std::cerr << "Index out of range: (" << col << ", " << row << ") in a "
+                  << cols << "x" << rows << " matrix." << std::endl;
+
+        // std::cerr << "Index out of range" << std::endl;
         exit(1);
     }
-    fMatrix result(1, 1);
-    result.elem[0] = elem[row * cols + col];
-    return result;
+    return elem[row * cols + col];
 }
 
 void fMatrix::Show() const {
@@ -441,18 +448,7 @@ fMatrix ATranspA(const fMatrix &A) {
 
     return B;
 }
-// Returns the 3 x 3 diagonal matrix with x, y, and z as its diagonal elements.
-fMatrix Diag(Float x, Float y, Float z) {
-    // 創建一個新的 fMatrix 對象 B，其行數和列數均為 3
-    fMatrix B(3, 3);
 
-    // 將 x、y 和 z 分別放在 B 的對角線上
-    B.elem[0] = x;
-    B.elem[4] = y;
-    B.elem[8] = z;
-
-    return B;
-}
 // Computes the determinant of a square matrix
 double Determinant(const fMatrix &A) {
     // 如果 A 是 1 x 1 的矩陣，則行列式等於它的唯一元素
@@ -585,34 +581,14 @@ fMatrix Inverse(const fMatrix &A) {
 
     return I;
 }
-// Computes Cholesky decomposition of a square matrix.
-fMatrix Cholesky(const fMatrix &A) {
-    fMatrix L(A.rows, A.cols);
 
-    // 計算 L 矩陣的第一列
-    L.elem[0] = std::sqrt(A.elem[0]);
-    for (int i = 1; i < A.rows; i++) {
-        L.elem[i * A.cols] = A.elem[i * A.cols] / L.elem[0];
+fMatrix Diag(fVector &v) {
+    int n = v.Size();
+    fMatrix mat(n, n);
+    for (int i = 0; i < n; i++) {
+        mat.Setelem(i, i, v(i));
     }
-
-    // 計算 L 矩陣的其它列
-    for (int j = 1; j < A.cols; j++) {
-        for (int i = j; i < A.rows; i++) {
-            double sum = 0;
-            for (int k = 0; k < j; k++) {
-                sum += L.elem[i * A.cols + k] * L.elem[j * A.cols + k];
-            }
-            if (i == j) {
-                L.elem[i * A.cols + j] =
-                    std::sqrt(A.elem[i * A.cols + i] - sum);
-            } else {
-                L.elem[i * A.cols + j] =
-                    (A.elem[i * A.cols + j] - sum) / L.elem[j * A.cols + j];
-            }
-        }
-    }
-
-    return L;
+    return mat;
 }
 
 void fMatrix::SetSize(int rows, int cols) {
@@ -634,4 +610,113 @@ void fMatrix::SetSize(int rows, int cols) {
 
     this->rows = rows;
     this->cols = cols;
+}
+
+void fMatrix::SetIdentity() {
+    for (int i = 0; i < Rows(); ++i) {
+        for (int j = 0; j < Cols(); ++j) {
+            if (i == j) {
+                Setelem(i, j, 1.0);
+            } else {
+                Setelem(i, j, 0.0);
+            }
+        }
+    }
+}
+
+fMatrix GivensRotation(int i, int j, Float theta, int n) {
+    fMatrix G(n, n);
+    G.SetIdentity();
+    G.Setelem(i, i, cos(theta));
+    G.Setelem(j, j, cos(theta));
+    G.Setelem(i, j, -sin(theta));
+    G.Setelem(j, i, sin(theta));
+    return G;
+}
+
+Float TwoNorm(const fVector &v) {
+    Float norm = 0.0;
+    for (int i = 0; i < v.Size(); ++i) {
+        norm += v(i) * v(i);
+    }
+    return sqrt(norm);
+}
+
+void SVDcmp(fMatrix &AU, fVector &W, fMatrix &V) {
+    int m = AU.Rows();
+    int n = AU.Cols();
+    fMatrix U(m, m), V_temp(n, n);
+    U.SetIdentity();
+    V_temp.SetIdentity();
+
+    Float tol = 1e-10;
+    bool converged = false;
+
+    int max_iterations = 100;  // Set a maximum number of iterations
+    int iteration = 0;         // Initialize the iteration counter
+
+    while (!converged && iteration < max_iterations) {
+        converged = true;
+        for (int i = 0; i < n - 1; i++) {
+            for (int j = i + 1; j < n; j++) {
+                Float a = 0, b = 0, c = 0;
+                for (int k = 0; k < m; k++) {
+                    a += AU.Getelem(k, i) * AU.Getelem(k, i);
+                    b += AU.Getelem(k, j) * AU.Getelem(k, j);
+                    c += AU.Getelem(k, i) * AU.Getelem(k, j);
+                }
+                if (fabs(c) > tol * sqrt(a * b)) {
+                    converged = false;
+                    Float theta = 0.5 * atan2(2 * c, a - b);
+                    fMatrix G = GivensRotation(
+                        i, j, theta, m);  // Change the size of the Givens
+                                          // rotation matrix to 'm'
+                    AU = AU * G;
+                    U = U * G;
+                    V_temp = V_temp * Transp(G);
+                }
+            }
+        }
+        iteration++;
+    }
+
+    for (int i = 0; i < n; i++) {
+        W(i) = TwoNorm(AU.GetCol(i));
+    }
+
+    // Copy the results to the input matrices
+    AU = U;
+    V = V_temp;
+
+    // Print the resulting matrix
+    // AU.Show();
+}
+
+fMatrix Cholesky(const fMatrix &A) {
+    int n = A.Rows();
+    if (n != A.Cols()) {
+        throw std::invalid_argument(
+            "Input matrix must be square for Cholesky decomposition.");
+    }
+
+    fMatrix L(n, n);
+
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j <= i; j++) {
+            Float sum = 0;
+            if (j == i) {
+                for (int k = 0; k < j; k++) {
+                    sum += L.Getelem(j, k) * L.Getelem(j, k);
+                }
+                L.Setelem(j, j, sqrt(A.Getelem(j, j) - sum));
+            } else {
+                for (int k = 0; k < j; k++) {
+                    sum += L.Getelem(i, k) * L.Getelem(j, k);
+                }
+                L.Setelem(i, j, (A.Getelem(i, j) - sum) / L.Getelem(j, j));
+            }
+        }
+    }
+
+    return L;
 }

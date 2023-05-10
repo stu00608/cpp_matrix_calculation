@@ -21,9 +21,19 @@ void testMatrixFuns(void) {
     fMatrix MatA(C, 3, 3);
     fMatrix MatB(D, 3, 3);
     fMatrix MatC(MatA);
-    fMatrix MatX(X, 5, 3);
+    fMatrix MatX(X, 3, 3);
     fMatrix MatXt = Transp(MatX);
 
+    // Declare and initialize the necessary variables and objects
+    cout << "Basic functionality test." << endl;
+    // fVector VecA(A, 3);            // Declare a vector VecA.
+    // fMatrix MatA(C, 3, 3);         // Declare a matrix MatA.
+    cout << VecA(1) << endl;      // Get the first element of VecA.
+    cout << VecA.Size() << endl;  // Get the size of VecA.
+    cout << MatA.Cols() << endl;  // Get the number of columns of MatA.
+    cout << MatA.Rows() << endl;  // Get the number of rows of MatA.
+
+    // Print out the matrices for visual inspection
     cout << "\nMatA = " << endl;
     MatA.Show();
 
@@ -33,77 +43,101 @@ void testMatrixFuns(void) {
     cout << "\nMatX = " << endl;
     MatX.Show();
 
+    // Begin testing matrix operators
     cout << "\nStarts to test matrix operators..." << endl;
-    // 1. A+B
+
+    // Test operator A+B
     cout << "\n1. A+B" << endl;
     (MatA + MatB).Show();
 
-    // 2. A-B
+    // Test operator A-B
     cout << "\n2. A-B" << endl;
     (MatA - MatB).Show();
 
-    // 4. 2*A
+    // Test operator A*B
+    cout << "\n3. A*B" << endl;
+    (MatA * MatB).Show();
+
+    // Test operator 2*A
     cout << "\n4. 2*A" << endl;
     (2 * MatA).Show();
 
-    // 6. A/2
-    cout << "\n6. A/2" << endl;
+    // Test operator A/2
+    cout << "\n5. A/2" << endl;
     (MatA / 2).Show();
 
-    // 7. A*B
-    cout << "\n7. A*B" << endl;
-    (MatA * MatB).Show();
-
-    // row trans
+    // Test swapping rows in matrix A
     cout << "row 1 to row 3" << endl;
     (MatA).Show();
     cout << endl;
     (MatA.SwapRows(0, 2)).Show();
 
-    // Get row
+    // Test getting row 1 of matrix A
     cout << "get row 1" << endl;
     (MatA).Show();
     cout << endl;
     (MatA.GetRow(0)).Show();
     cout << endl;
-    /// Get cols
+
+    // Test getting column 2 of matrix A
     cout << "get cols 2" << endl;
     (MatA).Show();
     cout << endl;
     (MatA.GetCol(1)).Show();
     cout << endl;
 
-    // Get a elem
+    // Test getting an element in matrix A
     cout << "get (0,1))" << endl;
     (MatA).Show();
-    cout << endl;
-    (MatA.Getelem(0, 1)).Show();
+    cout << MatA.Getelem(0, 1) << endl;
 
-    // Transpose Matrix
+    // Test transposing matrix A
     cout << "Transpose" << endl;
     (MatA).Show();
     cout << endl;
     (Transp(MatA)).Show();
     cout << endl;
 
-    // Determinent Value
+    // Test calculating the determinant of matrix A
     cout << "Determinent" << endl;
     (MatA).Show();
     cout << endl;
     cout << Determinant(MatA) << endl;
 
-    // Inverse
+    // Test calculating the inverse of matrix A
     cout << "Inverse" << endl;
     (MatA).Show();
     cout << endl;
     (Inverse(MatA)).Show();
     cout << endl;
 
+    // Test multiplying matrix A by its inverse
     (MatA * Inverse(MatA)).Show();
+
+    cout << "SVD decomposition functionality test." << endl;
+    fMatrix MatU(MatX);
+    fVector VecD(MatX.Cols());
+    fMatrix MatV(MatX.Cols(), MatX.Cols());
+    SVDcmp(MatU, VecD, MatV);
+
+    cout << "\nMatU" << endl;
+    MatU.Show();
+    cout << "\nMatD" << endl;
+    // Diag(VecD).Show();
+    VecD.Show();
+    cout << "\nMatV" << endl;
+    MatV.Show();
+    cout << endl << endl;
+
+    cout << "Cholesky decomposition functionality test." << endl;
+    fMatrix MatL = Cholesky(MatX);
+    cout << "\nMatL" << endl;
+    MatL.Show();
+
+    return;
 }
 
 int main(void) {
     testMatrixFuns();
-    cout << "Hello, world!\n" << endl;
     return 0;
 }
